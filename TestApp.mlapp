@@ -50,22 +50,21 @@ classdef TestApp < matlab.apps.AppBase
   
                 
         % Create Answers Field
-        answersLabel = uilabel(adminPage, 'Text', 'Enter Answers (comma separated):', 'Position', [200 300 400 50]);
+        answersLabel = uilabel(adminPage, 'Text', 'Enter Answers comma separated (A-Z):', 'Position', [200 300 400 50]);
         answersField = uieditfield(adminPage, 'text');
         answersField.Position = [200 250 400 50];
 
         % Create Correct Answer Field
-        correctAnswerLabel = uilabel(adminPage, 'Text', 'Enter Correct Answer (A-Z):', 'Position', [200 150 400 50]);
+        correctAnswerLabel = uilabel(adminPage, 'Text', 'Enter Correct Answer (A-Z):', 'Position', [200 200 400 50]);
         correctAnswerField = uieditfield(adminPage, 'text');
-        correctAnswerField.Position = [200 100 400 50];
+        correctAnswerField.Position = [200 150 400 50];
 
                 % Create Save Question Button
                 saveQuestionButton = uibutton(adminPage, 'push');
                 saveQuestionButton.Position = [200 25 400 50];
                 saveQuestionButton.Text = 'Save Question';
 
-                % Callback function for Save Question Button
-                saveQuestionButton.ButtonPushedFcn = @(btn, event) setappdata(app.UIFigure, 'question', questionField.Value);
+          saveQuestionButton.ButtonPushedFcn = @(btn, event) saveQuestion(app, questionField.Value, answersField.Value, correctAnswerField.Value);  
             
             
             
@@ -76,11 +75,12 @@ classdef TestApp < matlab.apps.AppBase
             % Function to save the question data
        
          function saveQuestion(app, question, answers, correctAnswer)
-            questionData.question = question;
-            questionData.answers = answers;
-            questionData.correctAnswer = correctAnswer;
-            setappdata(app.UIFigure, 'questionData', questionData);
-        end
+    questionData.question = question;
+    questionData.answers = strsplit(answers, ',');
+    questionData.correctAnswer = correctAnswer;
+    setappdata(app.UIFigure, 'questionData', questionData);
+    setappdata(app.UIFigure, 'question', question);
+         end
          
 
         end
@@ -110,15 +110,20 @@ classdef TestApp < matlab.apps.AppBase
 
             % Open the next page
             questionPage = uifigure('Name', 'Question Page', 'Position', [100 100 800 600]);
-             question = getappdata(app.UIFigure, 'question');
+            questionData = getappdata(app.UIFigure, 'questionData');
+            question = getappdata(app.UIFigure, 'question');
 
- if ~isempty(question)
-        uilabel(questionPage, 'Text', ['Hello ' examineeName ', here is your question:'], 'Position', [200 400 400 50]);
-        uilabel(questionPage, 'Text', question, 'Position', [200 350 400 50]);
+
+            
+  if ~isempty(questionData) && ~isempty(question)
+        uilabel(questionPage, 'Text', examineeName, 'Position', [10 550 400 50]);
+        uilabel(questionPage, 'Text', question, 'Position', [200 450 400 50]);
+
+
 
        % Create buttons for each answer
-        answers = questionData.answers;
-        numAnswers = length(answers);
+       answers = questionData.answers; 
+       numAnswers = length(answers);
         for i = 1:numAnswers
             answerButton = uibutton(questionPage, 'push');
             answerButton.Position = [200 400-(i*50) 400 50];
@@ -221,3 +226,4 @@ function submitAnswer(app, examineeName, selectedAnswer, questionPage)
             delete(app.UIFigure)
         end
     end
+end
