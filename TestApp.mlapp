@@ -14,7 +14,7 @@ classdef TestApp < matlab.apps.AppBase
 
         % Button pushed function: AdministratorButton
         function AdministratorButtonPushed(app, event)
- % Create Administrator Page
+            % Create Administrator Page
             administratorFig = uifigure('Name', 'Administrator Page', 'Position', [100 100 800 600]);
             uilabel(administratorFig, 'Text', 'Enter Administrator Password:', 'Position', [200 350 400 50]);
             
