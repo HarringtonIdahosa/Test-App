@@ -9,11 +9,19 @@ classdef TestApp < matlab.apps.AppBase
         AdministratorButton  matlab.ui.control.Button
     end
 
+     % Add a property to store tests
+    properties (Access = private)
+        Tests = struct('name', {}, 'questions', {});
+    end
+
     % Callbacks that handle component events
     methods (Access = private)
 
         % Button pushed function: AdministratorButton
         function AdministratorButtonPushed(app, event)
+
+            
+            
             % Create Administrator Page
             administratorFig = uifigure('Name', 'Administrator Page', 'Position', [100 100 800 600]);
             uilabel(administratorFig, 'Text', 'Enter Administrator Password:', 'Position', [200 350 400 50]);
@@ -41,123 +49,152 @@ classdef TestApp < matlab.apps.AppBase
 
                 % Open the next page
                 adminPage = uifigure('Name', 'Administrator Dashboard', 'Position', [200 100 800 600]);
-                uilabel(adminPage, 'Text', 'Welcome to the Administrator Dashboard', 'Position', [200 500 400 50]);
+                uilabel(adminPage, 'Text', 'Welcome to the Administrator Dashboard', 'Position', [200 550 400 50]);
            
-         % Create Question Field
-          questionLabel = uilabel(adminPage, 'Text', 'Enter Question for Examinee:', 'Position', [200 400 400 50]);
-          questionField = uieditfield(adminPage, 'text');
-          questionField.Position = [200 350 400 50];
-  
-                
-        % Create Answers Field
-        answersLabel = uilabel(adminPage, 'Text', 'Enter Answers comma separated (A-Z):', 'Position', [200 300 400 50]);
-        answersField = uieditfield(adminPage, 'text');
-        answersField.Position = [200 250 400 50];
+                % Create Test Name Field
+                testNameLabel = uilabel(adminPage, 'Text', 'Enter Test Name:', 'Position', [200 500 400 50]);
+                testNameField = uieditfield(adminPage, 'text');
+                testNameField.Position = [200 450 400 50];
 
-        % Create Correct Answer Field
-        correctAnswerLabel = uilabel(adminPage, 'Text', 'Enter Correct Answer (A-Z):', 'Position', [200 200 400 50]);
-        correctAnswerField = uieditfield(adminPage, 'text');
-        correctAnswerField.Position = [200 150 400 50];
+                % Create Question Field
+                questionLabel = uilabel(adminPage, 'Text', 'Enter Question:', 'Position', [200 400 400 50]);
+                questionField = uieditfield(adminPage, 'text');
+                questionField.Position = [200 350 400 50];
+  
+                % Create Answers Field
+                answersLabel = uilabel(adminPage, 'Text', 'Enter Answers comma separated (A-Z):', 'Position', [200 300 400 50]);
+                answersField = uieditfield(adminPage, 'text');
+                answersField.Position = [200 250 400 50];
+
+                % Create Correct Answer Field
+                correctAnswerLabel = uilabel(adminPage, 'Text', 'Enter Correct Answer (A-Z):', 'Position', [200 200 400 50]);
+                correctAnswerField = uieditfield(adminPage, 'text');
+                correctAnswerField.Position = [200 150 400 50];
 
                 % Create Save Question Button
                 saveQuestionButton = uibutton(adminPage, 'push');
-                saveQuestionButton.Position = [200 25 400 50];
+                saveQuestionButton.Position = [200 75 400 50];
                 saveQuestionButton.Text = 'Save Question';
 
-          saveQuestionButton.ButtonPushedFcn = @(btn, event) saveQuestion(app, questionField.Value, answersField.Value, correctAnswerField.Value);  
-            
-            
-            
+                saveQuestionButton.ButtonPushedFcn = @(btn, event) saveQuestion(app, testNameField.Value, questionField.Value, answersField.Value, correctAnswerField.Value);  
             else
                 % Display an error message
                 uialert(administratorFig, 'Incorrect Password. Please try again.', 'Error');
             end
-            % Function to save the question data
-       
-         function saveQuestion(app, question, answers, correctAnswer)
-    questionData.question = question;
-    questionData.answers = strsplit(answers, ',');
-    questionData.correctAnswer = correctAnswer;
-    setappdata(app.UIFigure, 'questionData', questionData);
-    setappdata(app.UIFigure, 'question', question);
-         end
-         
+        end
 
+        % Function to save the question data
+        function saveQuestion(app, testName, question, answers, correctAnswer)
+            questionData.question = question;
+            questionData.answers = strsplit(answers, ',');
+            questionData.correctAnswer = correctAnswer;
+
+            % Check if the test already exists
+            testIndex = find(strcmp({app.Tests.name}, testName));
+            if isempty(testIndex)
+                % Create a new test
+                newTest.name = testName;
+                newTest.questions = questionData;
+                app.Tests(end+1) = newTest;
+            else
+                % Add question to existing test
+                app.Tests(testIndex).questions(end+1) = questionData;
+            end
+
+            % Confirm question saved
+            uialert(gcf, 'Question saved successfully!', 'Success');
         end
 
         % Button pushed function: ExamineeButton
         function ExamineeButtonPushed(app, event)
-            examineeFig = uifigure('Name', 'Examinee Page', 'Position', [100 100 800 600]);
-            uilabel(examineeFig, 'Text', 'Enter your name:', 'Position', [200 400 400 50]);
+           examineeFig = uifigure('Name', 'Examinee Page', 'Position', [100 100 800 600]);
+            uilabel(examineeFig, 'Text', 'Enter your name:', 'Position', [200 500 400 50]);
 
             % Create Name Field
             nameField = uieditfield(examineeFig, 'text');
-            nameField.Position = [200 350 400 50];
+            nameField.Position = [200 450 400 50];
+
+            % Create Test Selection Dropdown
+            uilabel(examineeFig, 'Text', 'Select a test:', 'Position', [200 400 400 50]);
+            testDropdown = uidropdown(examineeFig);
+            testDropdown.Position = [200 350 400 50];
+            testDropdown.Items = {app.Tests.name};
 
             % Create Submit Button
             submitButton = uibutton(examineeFig, 'push');
             submitButton.Position = [300 250 200 50];
-            submitButton.Text = 'Submit';
+            submitButton.Text = 'Start Test';
 
             % Callback function for Submit Button
-            submitButton.ButtonPushedFcn = @(btn, event) showQuestion(app, nameField.Value, examineeFig);
+            submitButton.ButtonPushedFcn = @(btn, event) showQuestion(app, nameField.Value, testDropdown.Value, examineeFig);
         end
 
         % Function to show the question and the examinee's name
-        function showQuestion(app, examineeName, examineeFig)
+        function showQuestion(app, examineeName, selectedTest, examineeFig)
             % Close the name entry figure
             close(examineeFig);
 
-            % Open the next page
+            % Find the selected test
+            testIndex = find(strcmp({app.Tests.name}, selectedTest));
+            if isempty(testIndex)
+                uialert(gcf, 'Selected test not found.', 'Error');
+                return;
+            end
+
+            currentTest = app.Tests(testIndex);
+            if isempty(currentTest.questions)
+                uialert(gcf, 'No questions in the selected test.', 'Error');
+                return;
+            end
+
+            % Open the question page
             questionPage = uifigure('Name', 'Question Page', 'Position', [100 100 800 600]);
-            questionData = getappdata(app.UIFigure, 'questionData');
-            question = getappdata(app.UIFigure, 'question');
+            uilabel(questionPage, 'Text', ['Examinee: ' examineeName], 'Position', [10 550 400 50]);
+            uilabel(questionPage, 'Text', ['Test: ' selectedTest], 'Position', [10 500 400 50]);
 
-
-            
-  if ~isempty(questionData) && ~isempty(question)
-        uilabel(questionPage, 'Text', examineeName, 'Position', [10 550 400 50]);
-        uilabel(questionPage, 'Text', question, 'Position', [200 450 400 50]);
-
-
-
-       % Create buttons for each answer
-       answers = questionData.answers; 
-       numAnswers = length(answers);
-        for i = 1:numAnswers
-            answerButton = uibutton(questionPage, 'push');
-            answerButton.Position = [200 400-(i*50) 400 50];
-            answerButton.Text = [char(64+i) '. ' strtrim(answers{i})];  % Label buttons A, B, C, etc.
-            answerButton.ButtonPushedFcn = @(btn, event) submitAnswer(app, examineeName, char(64+i), questionPage);
+            % Display the first question
+            displayQuestion(app, questionPage, currentTest, 1, examineeName);
         end
-    else
-        uilabel(questionPage, 'Text', 'No question provided by the administrator.', 'Position', [200 300 400 50]);
-    end
-end
 
-% Function to submit the answer and send it to the administrator
-function submitAnswer(app, examineeName, selectedAnswer, questionPage)
-    % Close the question page
-    close(questionPage);
+        function displayQuestion(app, questionPage, currentTest, questionIndex, examineeName)
+            % Clear previous components
+            delete(findall(questionPage.Children, 'Type', 'UIControl'));
 
-    % Get the correct answer from app data
-    questionData = getappdata(app.UIFigure, 'questionData');
-    correctAnswer = questionData.correctAnswer;
+            questionData = currentTest.questions(questionIndex);
+            uilabel(questionPage, 'Text', questionData.question, 'Position', [200 450 400 50]);
 
-    % Determine if the answer is correct
-    isCorrect = strcmp(selectedAnswer, correctAnswer);
-    score = '0/1';
-    if isCorrect
-        score = '1/1';
-    end
+            % Create buttons for each answer
+            answers = questionData.answers;
+            numAnswers = length(answers);
+            for i = 1:numAnswers
+                answerButton = uibutton(questionPage, 'push');
+                answerButton.Position = [200 400-(i*50) 400 50];
+                answerButton.Text = [char(64+i) '. ' strtrim(answers{i})];  % Label buttons A, B, C, etc.
+                answerButton.ButtonPushedFcn = @(btn, event) submitAnswer(app, examineeName, char(64+i), questionPage, currentTest, questionIndex);
+            end
+        end
 
-    % Open a new figure for the administrator to see the examinee's answer
-    adminAnswerPage = uifigure('Name', 'Administrator Dashboard', 'Position', [100 100 800 600]);
-    uilabel(adminAnswerPage, 'Text', ['Examinee Name: ' examineeName], 'Position', [200 500 400 50]);
-    uilabel(adminAnswerPage, 'Text', ['Selected Answer: ' selectedAnswer], 'Position', [200 450 400 50]);
-    uilabel(adminAnswerPage, 'Text', ['Correct Answer: ' correctAnswer], 'Position', [200 400 400 50]);
-    uilabel(adminAnswerPage, 'Text', ['Score: ' score], 'Position', [200 350 400 50]);
+        % Function to submit the answer and move to the next question or finish the test
+        function submitAnswer(app, examineeName, selectedAnswer, questionPage, currentTest, questionIndex)
+            % Get the correct answer
+            correctAnswer = currentTest.questions(questionIndex).correctAnswer;
 
+            % Determine if the answer is correct
+            isCorrect = strcmp(selectedAnswer, correctAnswer);
+            score = isCorrect;
+
+            % Store the result (you might want to accumulate scores here)
+
+            % Move to the next question or finish the test
+            if questionIndex < length(currentTest.questions)
+                displayQuestion(app, questionPage, currentTest, questionIndex + 1, examineeName);
+            else
+                % Test finished, display results
+                close(questionPage);
+                resultPage = uifigure('Name', 'Test Results', 'Position', [100 100 800 600]);
+                uilabel(resultPage, 'Text', ['Test completed, ' examineeName '!'], 'Position', [200 500 400 50]);
+                % Here you would calculate and display the final score
+            end
         end
     end
 
