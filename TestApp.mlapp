@@ -20,9 +20,7 @@ classdef TestApp < matlab.apps.AppBase
         % Button pushed function: AdministratorButton
         function AdministratorButtonPushed(app, event)
 
-            
-            
-            % Create Administrator Page
+ % Create Administrator Page
             administratorFig = uifigure('Name', 'Administrator Page', 'Position', [100 100 800 600]);
             uilabel(administratorFig, 'Text', 'Enter Administrator Password:', 'Position', [200 350 400 50]);
             
@@ -101,13 +99,11 @@ classdef TestApp < matlab.apps.AppBase
                 app.Tests(testIndex).questions(end+1) = questionData;
             end
 
-            % Confirm question saved
-            uialert(gcf, 'Question saved successfully!', 'Success');
         end
 
         % Button pushed function: ExamineeButton
         function ExamineeButtonPushed(app, event)
-           examineeFig = uifigure('Name', 'Examinee Page', 'Position', [100 100 800 600]);
+          examineeFig = uifigure('Name', 'Examinee Page', 'Position', [100 100 800 600]);
             uilabel(examineeFig, 'Text', 'Enter your name:', 'Position', [200 500 400 50]);
 
             % Create Name Field
@@ -182,7 +178,11 @@ classdef TestApp < matlab.apps.AppBase
             % Determine if the answer is correct
             isCorrect = strcmp(selectedAnswer, correctAnswer);
             score = isCorrect;
-
+            score = '0/1';
+       
+            if isCorrect
+            score = '1/1';
+       end
             % Store the result (you might want to accumulate scores here)
 
             % Move to the next question or finish the test
@@ -192,7 +192,7 @@ classdef TestApp < matlab.apps.AppBase
                 % Test finished, display results
                 close(questionPage);
                 resultPage = uifigure('Name', 'Test Results', 'Position', [100 100 800 600]);
-                uilabel(resultPage, 'Text', ['Test completed, ' examineeName '!'], 'Position', [200 500 400 50]);
+                uilabel(resultPage, 'Text', ['Test Score, ' score], 'Position', [200 500 400 50]);
                 % Here you would calculate and display the final score
             end
         end
@@ -206,7 +206,7 @@ classdef TestApp < matlab.apps.AppBase
 
             % Create UIFigure and hide until all components are created
             app.UIFigure = uifigure('Visible', 'off');
-            app.UIFigure.Position = [100 100 1024 749];
+            app.UIFigure.Position = [100 100 1026 749];
             app.UIFigure.Name = 'MATLAB App';
 
             % Create AdministratorButton
