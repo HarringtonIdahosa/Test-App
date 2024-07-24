@@ -107,11 +107,12 @@ end
             createButton.ButtonPushedFcn = @(btn, event) createTestQuestions(app, testNameField.Value, numQuestionsField.Value, createTestPage);
         end
 
-       function createTestQuestions(app, testName, numQuestions, createTestPage)
+   function createTestQuestions(app, testName, numQuestions, createTestPage)
     % Close the create test page
     close(createTestPage);
 
     % Create a new test structure
+    newTest.questions = cell(1, numQuestions);  % Initialize with empty cells
     newTest.name = testName;
     newTest.questions = struct('question', {}, 'answers', {}, 'correctAnswer', {});
 
@@ -142,38 +143,46 @@ end
     questionCounter = 1;
 
     % Create a label for the question counter
-    uilabel(questionPage, 'Text', sprintf('Question %d of %d', questionCounter, numQuestions), 'Position', [300 550 200 50]);
-
-    % Create a nested function to handle button clicks
+    counterLabel = uilabel(questionPage, 'Text', sprintf('Question %d of %d', questionCounter, numQuestions), 'Position', [300 550 200 50]);
+       
     function saveQuestionButtonPushed(~, ~)
-        saveQuestion(app, newTest, questionField, answersField, correctAnswerField, questionCounter, numQuestions, questionPage);
+        newTest.questions(questionCounter).question = questionField.Value;
+        newTest.questions(questionCounter).answers = strsplit(answersField.Value, ',');
+        newTest.questions(questionCounter).correctAnswer = correctAnswerField.Value;
+        
         questionCounter = questionCounter + 1;
-        if questionCounter > numQuestions
-           
-            if isvalid(questionPage)
-    close(questionPage);
-end
+        if questionCounter <= numQuestions
+            % Clear fields for next question
+            questionField.Value = '';
+            answersField.Value = '';
+            correctAnswerField.Value = '';
+            counterLabel.Text = sprintf('Question %d of %d', questionCounter, numQuestions);
+        else
+            % All questions have been entered, save the test
+            app.Tests(end+1) = newTest;
+            close(questionPage);
+            uialert(app.UIFigure, 'Test created successfully', 'Success');
         end
     end
 
     % Set the button callback
     saveQuestionButton.ButtonPushedFcn = @saveQuestionButtonPushed;
-end
-
+   end
+   
 % Function to delete a test
 function deleteTest(app, testDropdown)
-    if ~strcmp(testDropdown.Value, 'Create New Test')
+    if ~strcmp(testDropdown.Value, '')
         testIndex = find(strcmp({app.Tests.name}, testDropdown.Value));
         if ~isempty(testIndex)
             app.Tests(testIndex) = [];
             
             % Update the dropdown items
             testNames = cellfun(@(x) x.name, num2cell(app.Tests), 'UniformOutput', false);
-            testDropdown.Items = ['Create New Test', testNames];
+            testDropdown.Items = ['', testNames];
             
             % Set the dropdown value to 'Create New Test' if all tests are deleted
             if isempty(testNames)
-                testDropdown.Value = 'Create New Test';
+                testDropdown.Value = '';
             else
                 testDropdown.Value = testNames{1};
             end
@@ -233,33 +242,21 @@ function editTest(app, selectedTest, testSelectionPage)
 
     saveQuestionButton.ButtonPushedFcn = @(btn, event) saveQuestion(app, selectedTest, questionField.Value, answersField.Value, correctAnswerField.Value);
 end
-
 function saveQuestion(app, newTest, questionField, answersField, correctAnswerField, questionCounter, numQuestions, questionPage)
-    % Save the current question
     newTest.questions(questionCounter).question = questionField.Value;
     newTest.questions(questionCounter).answers = strsplit(answersField.Value, ',');
     newTest.questions(questionCounter).correctAnswer = correctAnswerField.Value;
-
-    % Clear the fields for the next question
-    questionField.Value = '';
-    answersField.Value = '';
-    correctAnswerField.Value = '';
-
-    if questionCounter < numQuestions
-        % Move to the next question
-        questionCounter = questionCounter + 1;
-        
-        % Update the question counter label
-        delete(findall(questionPage.Children, 'Type', 'UILabel', 'Text', sprintf('Question %d of %d', questionCounter-1, numQuestions)));
-        uilabel(questionPage, 'Text', sprintf('Question %d of %d', questionCounter, numQuestions), 'Position', [300 550 200 50]);
+    
+    questionCounter = questionCounter + 1;
+    if questionCounter <= numQuestions
+        questionField.Value = '';
+        answersField.Value = '';
+        correctAnswerField.Value = '';
     else
-        % All questions have been entered, save the test
         app.Tests(end+1) = newTest;
         close(questionPage);
         uialert(app.UIFigure, 'Test created successfully', 'Success');
     end
-        
-            
         end
 
         % Button pushed function: ExamineeButton
@@ -339,19 +336,17 @@ end
 
     % Initialize the score
     currentTest.score = 0;
-
+    currentTest.userAnswers = cell(1, length(currentTest.questions));  % Add this line
     % Open the question page
     questionPage = uifigure('Name', 'Test Page', 'Position', [100 100 800 600]);
     uilabel(questionPage, 'Text', ['Examinee: ' examineeName], 'Position', [10 550 400 50]);
     uilabel(questionPage, 'Text', ['Test: ' selectedTest], 'Position', [10 500 400 50]);
 
-    % Display the first question
-    displayQuestion(app, questionPage, currentTest, 1, examineeName);
-        end
+    % Display all questions
+    displayQuestions(app, questionPage, currentTest, examineeName);
+end
 
-
-
-      function displayQuestion(app, questionPage, currentTest, questionIndex, examineeName)
+function displayQuestions(app, questionPage, currentTest, examineeName)
     % Clear previous components
     delete(findall(questionPage.Children, 'Type', 'UIControl'));
 
@@ -359,44 +354,79 @@ end
     uilabel(questionPage, 'Text', ['Examinee: ' examineeName], 'Position', [10 550 400 50]);
     uilabel(questionPage, 'Text', ['Test: ' currentTest.name], 'Position', [10 500 400 50]);
 
-    questionData = currentTest.questions(questionIndex);
-    uilabel(questionPage, 'Text', questionData.question, 'Position', [200 450 400 50]);
+    % Loop through all questions
+    numQuestions = numel(currentTest.questions);
+    for i = 1:numQuestions
+        questionData = currentTest.questions(i);
+        questionText = sprintf('Q%d: %s', i, questionData.question);
+        
+        % Calculate the vertical position dynamically
+        questionYPos = 450 - (i-1) * 150;
+        uilabel(questionPage, 'Text', questionText, 'Position', [200 questionYPos 400 50]);
 
-    % Create buttons for each answer
-    answers = questionData.answers;
-    numAnswers = length(answers);
-    for i = 1:numAnswers
-        answerButton = uibutton(questionPage, 'push');
-        answerButton.Position = [200 400-(i*50) 400 50];
-        answerButton.Text = [char(64+i) '. ' strtrim(answers{i})];  % Label buttons A, B, C, etc.
-        answerButton.ButtonPushedFcn = @(btn, event) submitAnswer(app, examineeName, char(64+i), questionPage, currentTest, questionIndex);
+        % Create buttons for each answer
+        answers = questionData.answers;
+        numAnswers = length(answers);
+        for j = 1:numAnswers
+            answerButton = uibutton(questionPage, 'push');
+            
+            % Calculate the vertical position dynamically for answers
+            answerYPos = questionYPos - 50 - (j-1) * 50;
+            answerButton.Position = [200 answerYPos 400 50];
+            
+            % Handle both cell array and string array cases
+            if iscell(answers)
+                answerText = answers{j};
+            else
+                answerText = answers(j);
+            end
+            
+            answerButton.Text = [char(64+j) '. ' strtrim(answerText)];  % Label buttons A, B, C, etc.
+            answerButton.UserData = i;  % Set UserData to question index
+            answerButton.ButtonPushedFcn = @(btn, event) submitAnswer(app, examineeName, char(64+j), questionPage, currentTest, i);
+        end
     end
 
-    % Add a label to show the current question number
-    uilabel(questionPage, 'Text', sprintf('Question %d of %d', questionIndex, length(currentTest.questions)), 'Position', [10 450 200 50]);
+    % Add a label to show the total number of questions
+    uilabel(questionPage, 'Text', sprintf('Total Questions: %d', numQuestions), 'Position', [10 questionYPos - numAnswers*50 200 50]);
+
+    % Add a submit button
+    submitButton = uibutton(questionPage, 'push');
+    submitButton.Position = [400 50 200 50];
+    submitButton.Text = 'Submit Test';
+    submitButton.ButtonPushedFcn = @(btn, event) submitTest(app, examineeName, questionPage, currentTest);
+
+    % Add a property to store answers
+    currentTest.userAnswers = cell(1, numQuestions);
+
 end
-  function submitAnswer(app, examineeName, selectedAnswer, questionPage, currentTest, questionIndex)
-    % Get the correct answer
-    correctAnswer = currentTest.questions(questionIndex).correctAnswer;
 
-    % Determine if the answer is correct
-    isCorrect = strcmp(selectedAnswer, correctAnswer);
-
-    % Update the score
-    currentTest.score = currentTest.score + isCorrect;
-
-    % Move to the next question or finish the test
-    if questionIndex < length(currentTest.questions)
-        displayQuestion(app, questionPage, currentTest, questionIndex + 1, examineeName);
-    else
-        % Test finished, display results
-        close(questionPage);
-        resultPage = uifigure('Name', 'Test Results', 'Position', [100 100 800 600]);
-        finalScore = currentTest.score;
-        totalQuestions = length(currentTest.questions);
-        uilabel(resultPage, 'Text', sprintf('Test Score: %d/%d', finalScore, totalQuestions), 'Position', [200 500 400 50]);
+function submitTest(app, examineeName, questionPage, currentTest)
+    score = 0;
+    for i = 1:length(currentTest.questions)
+        if strcmp(currentTest.userAnswers{i}, currentTest.questions(i).correctAnswer)
+            score = score + 1;
+        end
     end
-       
+    
+    close(questionPage);
+    resultPage = uifigure('Name', 'Test Results', 'Position', [100 100 800 600]);
+    totalQuestions = length(currentTest.questions);
+    uilabel(resultPage, 'Text', sprintf('Test Score: %d/%d', score, totalQuestions), 'Position', [200 500 400 50]);
+end
+
+function submitAnswer(app, examineeName, selectedAnswer, questionPage, currentTest, questionIndex)
+    currentTest.userAnswers{questionIndex} = selectedAnswer;
+    
+    questionButtons = findall(questionPage, 'Type', 'UIButton', 'UserData', questionIndex);
+    for btn = questionButtons'
+        if startsWith(btn.Text, [selectedAnswer '. '])
+            btn.BackgroundColor = [0.8 0.8 1]; % Light blue
+        else
+            btn.BackgroundColor = [0.94 0.94 0.94]; % Default color
+        end
+    end
+      
         end
     end
 
